@@ -78,7 +78,7 @@
 |----|----------|-------|--------|---------|
 | 0.1 | Xác nhận API enjiCAD | Build/load plugin hiện có (`CHECKENJI`), xác nhận đọc/ghi entity, block, text, dim, table | Checklist API OK/NOT OK | P0 |
 | 0.2 | Inventory bản vẽ gốc | Liệt kê layer, block, dim, text, table trên DWG gốc; ghi chú text `????` (font/encoding) | File inventory (Excel/Markdown) | P0 |
-| 0.3 | Chốt bộ tham số MVP | Danh sách input tối thiểu (vd: D, ShellLength, khoảng nozzle, DrawingNo, Capacity) | Spec tham số v0.1 | P0 |
+| 0.3 | Chốt bộ tham số MVP | Danh sách input tối thiểu (vd: D, ShellLength, khoảng nozzle, DrawingNo, Capacity) | Spec v0.1 — `spec/param-mvp-v0.1.md` ✅ | P0 |
 | 0.4 | Chốt quy ước đặt tên | Quy tắc đặt tên block/layer/text hoặc key XData (`TANK_PARAM=SHELL_L`) | Tài liệu naming convention | P0 |
 | 0.5 | Sao lưu template | Copy DWG gốc → `templates/tank_master.dwg`; làm việc trên bản copy | File template ổn định | P0 |
 | 0.6 | Cấu trúc solution | Tách folder: Commands, UI, Models, Engine, Config; Class Library .NET Framework 4.8, Platform x64 | Solution sạch, build OK | P1 |
@@ -222,23 +222,11 @@ Thực hiện theo thứ tự cố định: **Geometry → Blocks → Dimensions
 
 ---
 
-## 4. Bộ tham số đề xuất (MVP — chỉnh khi chốt với thiết kế)
+## 4. Bộ tham số MVP
 
-| ParamKey | Mô tả | Đơn vị | Ghi chú |
-|----------|-------|--------|---------|
-| `DIAMETER` | Đường kính trong/ngoài (chốt 1 chuẩn) | mm | Ảnh mẫu ~1500 |
-| `SHELL_LENGTH` | Chiều dài thân | mm | Ảnh mẫu ~4440 |
-| `OVERALL_LENGTH` | Chiều dài tổng (derived hoặc input) | mm | Có thể tính từ shell + heads |
-| `NOZZLE_COUNT` | Số nozzle đỉnh | — | MVP cố định 3 |
-| `NOZZLE_SPAN_1` | Khoảng từ mốc → N1 | mm | |
-| `NOZZLE_SPAN_2` | N1 → N2 | mm | |
-| `NOZZLE_SPAN_3` | N2 → N3 | mm | |
-| `CAPACITY` | Dung tích | L | Input hoặc derived |
-| `WEIGHT` | Khối lượng | kg | Có thể placeholder |
-| `DRAWING_NO` | Số bản vẽ | text | Title block |
-| `DRAWING_DATE` | Ngày | text | Tuỳ chọn |
+Đã tách file riêng (không nhân đôi bảng trong kế hoạch):
 
-> Chốt chính xác “mốc đo” (từ đầu nào, centerline nào) trong G0.3 / G1.7 trước khi code stretch.
+- Spec: [`spec/param-mvp-v0.1.md`](spec/param-mvp-v0.1.md)
 
 ---
 

@@ -60,6 +60,8 @@
     <Compile Include="Commands.cs" />
     <Compile Include="DrawingInventory.cs" />
     <Compile Include="EntityApiProbe.cs" />
+    <Compile Include="SampleXData.cs" />
+    <Compile Include="SampleXDataCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

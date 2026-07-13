@@ -36,7 +36,7 @@ namespace EnjiCadCheck
             ReportAsm(ed, "GcCoreMgd");
 
             ed.WriteMessage("\nStatus:   OK - enjiCAD .NET API is working");
-            ed.WriteMessage("\nTip:      CHECKENT = R/W probe; TANKINV = G0.2 inventory dump");
+            ed.WriteMessage("\nTip:      CHECKENT / TANKINV / XDRAW / XTAG / XTAGS / XSIZE");
             ed.WriteMessage("\n================================\n");
         }
 
