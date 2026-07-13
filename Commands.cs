@@ -36,9 +36,37 @@ namespace EnjiCadCheck
             ReportAsm(ed, "GcCoreMgd");
 
             ed.WriteMessage("\nStatus:   OK - enjiCAD .NET API is working");
+            ed.WriteMessage("\nTip:      Run CHECKENT to probe read/write entity/block/text/dim/table");
             ed.WriteMessage("\n================================\n");
         }
 
+        [CommandMethod("CHECKENT")]
+        public void CheckEntities()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+            {
+                return;
+            }
 
+            var ed = doc.Editor;
+            ed.WriteMessage("\n========== CHECKENT ==========");
+
+            try
+            {
+                using (doc.LockDocument())
+                {
+                    EntityApiProbe.Run(doc.Database, ed);
+                }
+
+                ed.WriteMessage("\nStatus:   DONE - see OK / SKIP / FAIL above");
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage("\nStatus:   FAIL - {0}", ex.Message);
+            }
+
+            ed.WriteMessage("\n================================\n");
+        }
     }
 }
