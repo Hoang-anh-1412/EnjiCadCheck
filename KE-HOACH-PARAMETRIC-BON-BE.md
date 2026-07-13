@@ -5,7 +5,7 @@
 | Dự án | EnjiCadCheck |
 | Mục tiêu | Từ bản vẽ gốc chuẩn, nhập tham số → sinh bản vẽ mới tự động, giảm sửa tay |
 | Nền tảng | enjiCAD (.NET API `Gssoft.Gscad` / `GcMgd`, `GcDbMgd`, `GcCoreMgd`) |
-| Ngôn ngữ | C# (.NET Framework 4.8) |
+| Ngôn ngữ | C# — Class Library (.NET Framework 4.8), non-SDK csproj + `.sln` |
 | Bản vẽ gốc | Bồn nằm ngang: plan, section A-A, B-B/C-C, detail, BOM, specs, title block |
 | Phiên bản kế hoạch | 1.0 — 2026-07-13 |
 
@@ -81,7 +81,7 @@
 | 0.3 | Chốt bộ tham số MVP | Danh sách input tối thiểu (vd: D, ShellLength, khoảng nozzle, DrawingNo, Capacity) | Spec tham số v0.1 | P0 |
 | 0.4 | Chốt quy ước đặt tên | Quy tắc đặt tên block/layer/text hoặc key XData (`TANK_PARAM=SHELL_L`) | Tài liệu naming convention | P0 |
 | 0.5 | Sao lưu template | Copy DWG gốc → `templates/tank_master.dwg`; làm việc trên bản copy | File template ổn định | P0 |
-| 0.6 | Cấu trúc solution | Tách folder: Commands, UI, Models, Engine, Config; giữ target `net48` x64 | Solution sạch, build OK | P1 |
+| 0.6 | Cấu trúc solution | Tách folder: Commands, UI, Models, Engine, Config; Class Library .NET Framework 4.8, Platform x64 | Solution sạch, build OK | P1 |
 
 **Tiêu chí hoàn thành G0:** Plugin load được; đã có inventory + danh sách param MVP + file template tách biệt.
 
@@ -319,7 +319,7 @@ MVP được coi là xong khi:
 
 Hiện repo đã có:
 
-- `EnjiCadCheck.csproj` — `net48`, reference `GcMgd` / `GcDbMgd` / `GcCoreMgd`
+- `EnjiCadCheck.csproj` / `EnjiCadCheck.sln` — Class Library .NET Framework 4.8 (x64), reference `GcMgd` / `GcDbMgd` / `GcCoreMgd`
 - `Commands.cs` — lệnh `CHECKENJI`
 - `Find-EnjiDlls.ps1`
 

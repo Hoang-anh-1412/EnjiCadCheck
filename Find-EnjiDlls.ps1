@@ -28,5 +28,5 @@ $dir = Split-Path ($hits | Where-Object { $_ -like "*GcMgd.dll" } | Select-Objec
 if ($dir) {
     Write-Host "`nSuggested build:"
     Write-Host "  `$env:ENJICAD_DIR = '$dir'"
-    Write-Host "  dotnet build -c Release"
+    Write-Host "  msbuild EnjiCadCheck.sln /p:Configuration=Release /p:Platform=x64"
 }
