@@ -43,19 +43,20 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="GcCoreMgd">
-      <HintPath>$(EnjiCadDir)\GcCoreMgd.dll</HintPath>
+      <HintPath>..\..\..\..\myPRJ\CAD\PDF\Debug\GcCoreMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="GcDbMgd">
-      <HintPath>$(EnjiCadDir)\GcDbMgd.dll</HintPath>
+      <HintPath>..\..\..\..\myPRJ\CAD\PDF\Debug\GcDbMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="GcMgd">
-      <HintPath>$(EnjiCadDir)\GcMgd.dll</HintPath>
+      <HintPath>..\..\..\..\myPRJ\CAD\PDF\Debug\GcMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Class2.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
