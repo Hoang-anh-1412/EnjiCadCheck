@@ -15,7 +15,9 @@ namespace EnjiCadCheck
         public static void Run(Database db, Editor ed)
         {
             var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var samples = new List<ObjectId>();
+            // Keep first hit per kind — ModelSpace often starts with thousands of Lines.
+            var probeIds = new Dictionary<string, ObjectId>(StringComparer.OrdinalIgnoreCase);
+            var sampleIds = new List<ObjectId>();
 
             using (var tr = db.TransactionManager.StartTransaction())
             {
@@ -43,9 +45,10 @@ namespace EnjiCadCheck
 
                     counts[kind]++;
 
-                    if (samples.Count < 40)
+                    if (IsProbeKind(kind) && !probeIds.ContainsKey(kind))
                     {
-                        samples.Add(id);
+                        probeIds[kind] = id;
+                        sampleIds.Add(id);
                     }
                 }
 
@@ -62,16 +65,25 @@ namespace EnjiCadCheck
                     }
                 }
 
-                ReportSamples(tr, ed, samples);
+                ReportSamples(tr, ed, sampleIds);
 
                 ed.WriteMessage("\n--- WRITE: reversible probes ---");
-                ProbeWriteBlock(tr, ed, samples);
-                ProbeWriteText(tr, ed, samples);
-                ProbeWriteDim(tr, ed, samples);
-                ProbeWriteTable(tr, ed, samples);
+                ProbeWriteBlock(tr, ed, sampleIds);
+                ProbeWriteText(tr, ed, sampleIds);
+                ProbeWriteDim(tr, ed, sampleIds);
+                ProbeWriteTable(tr, ed, sampleIds);
 
                 tr.Commit();
             }
+        }
+
+        private static bool IsProbeKind(string kind)
+        {
+            return kind == "BlockReference"
+                || kind == "DBText"
+                || kind == "MText"
+                || kind == "Dimension"
+                || kind == "Table";
         }
 
         private static string Classify(Entity ent)

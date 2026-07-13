@@ -36,7 +36,7 @@ namespace EnjiCadCheck
             ReportAsm(ed, "GcCoreMgd");
 
             ed.WriteMessage("\nStatus:   OK - enjiCAD .NET API is working");
-            ed.WriteMessage("\nTip:      Run CHECKENT to probe read/write entity/block/text/dim/table");
+            ed.WriteMessage("\nTip:      CHECKENT = R/W probe; TANKINV = G0.2 inventory dump");
             ed.WriteMessage("\n================================\n");
         }
 
@@ -67,6 +67,36 @@ namespace EnjiCadCheck
             }
 
             ed.WriteMessage("\n================================\n");
+        }
+
+        [CommandMethod("TANKINV")]
+        public void TankInventory()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+            {
+                return;
+            }
+
+            var ed = doc.Editor;
+
+            try
+            {
+                string path;
+                using (doc.LockDocument())
+                {
+                    path = DrawingInventory.Run(doc.Database, ed);
+                }
+
+                ed.WriteMessage("\nStatus:   Inventory written to:\n  {0}", path);
+                ed.WriteMessage("\nNext:     F2 copy log, or send the .md file here\n");
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage("\n========== TANKINV ==========");
+                ed.WriteMessage("\nStatus:   FAIL - {0}", ex.Message);
+                ed.WriteMessage("\n================================\n");
+            }
         }
     }
 }

@@ -58,6 +58,7 @@
   <ItemGroup>
     <Compile Include="Class2.cs" />
     <Compile Include="Commands.cs" />
+    <Compile Include="DrawingInventory.cs" />
     <Compile Include="EntityApiProbe.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
