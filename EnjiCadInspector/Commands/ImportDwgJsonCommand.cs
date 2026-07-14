@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Gssoft.Gscad.ApplicationServices;
+using Gssoft.Gscad.DatabaseServices;
 using Gssoft.Gscad.EditorInput;
 using Gssoft.Gscad.Runtime;
 using EnjiCadInspector.Helpers;
@@ -15,13 +16,14 @@ namespace EnjiCadInspector.Commands
     /// <summary>
     /// CADian / enjiCAD command: IMPORT_DWG_JSON
     /// Creates a new drawing and recreates entities from drawing.json.
+    /// Session flag is required for DocumentManager.Add / Open.
     /// </summary>
     public class ImportDwgJsonCommand
     {
         /// <summary>
         /// Entry point: pick JSON → new document → import layers + ModelSpace entities.
         /// </summary>
-        [CommandMethod("IMPORT_DWG_JSON")]
+        [CommandMethod("IMPORT_DWG_JSON", CommandFlags.Session)]
         public void ImportDwgJson()
         {
             var sourceDoc = Application.DocumentManager.MdiActiveDocument;
@@ -47,49 +49,37 @@ namespace EnjiCadInspector.Commands
                 var payload = JsonHelper.Deserialize(jsonPath);
 
                 ed.WriteMessage("\nCreating new drawing...");
-                var newDoc = Application.DocumentManager.Add(string.Empty);
+                string savedDwgPath;
+                var stats = BuildNewDrawingFile(payload, jsonPath, ed, out savedDwgPath);
+
+                ed.WriteMessage("\nOpening:  {0}", savedDwgPath);
+                var newDoc = Application.DocumentManager.Open(savedDwgPath, false);
                 if (newDoc == null)
                 {
-                    throw new InvalidOperationException("DocumentManager.Add returned null.");
+                    throw new InvalidOperationException("DocumentManager.Open returned null for " + savedDwgPath);
                 }
 
+                Application.DocumentManager.MdiActiveDocument = newDoc;
                 var newEd = newDoc.Editor;
-                ImportStats stats;
-
-                using (newDoc.LockDocument())
-                {
-                    stats = RunImport(newDoc, payload, newEd);
-                }
 
                 try
                 {
-                    newEd.Command("_.ZOOM", "_E");
+                    newDoc.SendStringToExecute("_.ZOOM _E ", true, false, false);
                 }
-                catch (System.Exception)
+                catch (System.Exception zoomEx)
                 {
-                    try
-                    {
-                        newDoc.SendStringToExecute("_.ZOOM _E ", true, false, false);
-                    }
-                    catch (System.Exception zoomEx)
-                    {
-                        newEd.WriteMessage("\nZOOM E skipped: {0}", zoomEx.Message);
-                    }
+                    newEd.WriteMessage("\nZOOM E skipped: {0}", zoomEx.Message);
                 }
 
                 newEd.WriteMessage("\n========== IMPORT_DWG_JSON ==========");
                 newEd.WriteMessage("\nStatus:   OK");
                 newEd.WriteMessage("\nSource:   {0}", jsonPath);
+                newEd.WriteMessage("\nDWG:     {0}", savedDwgPath);
                 newEd.WriteMessage("\nLayers+:  {0}", stats.LayersCreated);
                 newEd.WriteMessage("\nCreated:  {0}", stats.Created);
                 newEd.WriteMessage("\nSkipped:  {0}", stats.Skipped);
                 newEd.WriteMessage("\nErrors:   {0}", stats.Errors);
-                newEd.WriteMessage("\nTip:      Re-export with EXPORT_DWG_JSON if Dimensions were skipped (legacy JSON).");
                 newEd.WriteMessage("\n=====================================\n");
-
-                // Also echo on the original editor if still valid.
-                ed.WriteMessage("\nStatus:   OK — imported into new document");
-                ed.WriteMessage("\nCreated:  {0}  Skipped: {1}  Errors: {2}", stats.Created, stats.Skipped, stats.Errors);
             }
             catch (System.Exception ex)
             {
@@ -98,9 +88,125 @@ namespace EnjiCadInspector.Commands
                 {
                     ed.WriteMessage("\nInner:    {0}", ex.InnerException.Message);
                 }
+
+                ed.WriteMessage("\n=====================================\n");
+            }
+        }
+
+        /// <summary>
+        /// Builds entities into a side Database, SaveAs to a new DWG beside the JSON.
+        /// Avoids DocumentManager.Add("") which returns eNotApplicable on CADian.
+        /// </summary>
+        private static ImportStats BuildNewDrawingFile(
+            ExportResult payload,
+            string jsonPath,
+            Editor logEd,
+            out string savedDwgPath)
+        {
+            savedDwgPath = ResolveOutputDwgPath(jsonPath);
+            var warnCount = 0;
+            Action<string> logWarn = message =>
+            {
+                warnCount++;
+                if (warnCount <= 40)
+                {
+                    logEd.WriteMessage("\n  WARN: {0}", message);
+                }
+            };
+
+            using (var db = new Database(true, true))
+            {
+                ImportStats stats;
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    logEd.WriteMessage("\nEnsuring layers...");
+                    var layersCreated = LayerImporter.EnsureLayers(
+                        db,
+                        tr,
+                        payload.Layers,
+                        message => logWarn("layer: " + message));
+
+                    logEd.WriteMessage("\nImporting entities...");
+                    stats = EntityImporter.Import(
+                        db,
+                        tr,
+                        payload.Entities,
+                        (handle, message) => logWarn("[" + handle + "] " + message));
+
+                    stats.LayersCreated = layersCreated;
+                    tr.Commit();
+                }
+
+                logEd.WriteMessage("\nSaving:   {0}", savedDwgPath);
+                SaveDatabase(db, savedDwgPath);
+
+                if (warnCount > 40)
+                {
+                    logEd.WriteMessage("\n  ... {0} total warnings (truncated)", warnCount);
+                }
+
+                return stats;
+            }
+        }
+
+        private static void SaveDatabase(Database db, string path)
+        {
+            // Try common AutoCAD / GstarCAD SaveAs overloads.
+            try
+            {
+                db.SaveAs(path, DwgVersion.Current);
+                return;
+            }
+            catch (System.Exception)
+            {
+                // Fall through.
             }
 
-            ed.WriteMessage("\n=====================================\n");
+            try
+            {
+                db.SaveAs(path, true, DwgVersion.Current, null);
+                return;
+            }
+            catch (System.Exception ex)
+            {
+                throw new InvalidOperationException("SaveAs failed for " + path + ": " + ex.Message, ex);
+            }
+        }
+
+        private static string ResolveOutputDwgPath(string jsonPath)
+        {
+            string directory;
+            string baseName;
+            try
+            {
+                directory = Path.GetDirectoryName(jsonPath);
+                baseName = Path.GetFileNameWithoutExtension(jsonPath);
+            }
+            catch (System.Exception)
+            {
+                directory = null;
+                baseName = null;
+            }
+
+            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+            {
+                directory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            }
+
+            if (string.IsNullOrWhiteSpace(baseName))
+            {
+                baseName = "drawing";
+            }
+
+            var candidate = Path.Combine(directory, baseName + "-imported.dwg");
+            if (!File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            return Path.Combine(
+                directory,
+                baseName + "-imported-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".dwg");
         }
 
         private static string PromptJsonPath(Editor ed)
@@ -111,7 +217,6 @@ namespace EnjiCadInspector.Commands
                 PreferCommandLine = false
             };
 
-            // Default to Desktop / project-friendly start if available.
             try
             {
                 var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -132,53 +237,6 @@ namespace EnjiCadInspector.Commands
             }
 
             return result.StringResult;
-        }
-
-        private static ImportStats RunImport(Document doc, ExportResult payload, Editor ed)
-        {
-            var db = doc.Database;
-            var warnCount = 0;
-
-            using (var tr = db.TransactionManager.StartTransaction())
-            {
-                ed.WriteMessage("\nEnsuring layers...");
-                var layersCreated = LayerImporter.EnsureLayers(
-                    db,
-                    tr,
-                    payload.Layers,
-                    message =>
-                    {
-                        warnCount++;
-                        if (warnCount <= 30)
-                        {
-                            ed.WriteMessage("\n  WARN layer: {0}", message);
-                        }
-                    });
-
-                ed.WriteMessage("\nImporting entities...");
-                var stats = EntityImporter.Import(
-                    db,
-                    tr,
-                    payload.Entities,
-                    (handle, message) =>
-                    {
-                        warnCount++;
-                        if (warnCount <= 40)
-                        {
-                            ed.WriteMessage("\n  WARN [{0}]: {1}", handle, message);
-                        }
-                    });
-
-                stats.LayersCreated = layersCreated;
-                tr.Commit();
-
-                if (warnCount > 40)
-                {
-                    ed.WriteMessage("\n  ... {0} total warnings (truncated)", warnCount);
-                }
-
-                return stats;
-            }
         }
     }
 }
