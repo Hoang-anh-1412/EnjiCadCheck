@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Gssoft.Gscad.DatabaseServices;
+using Gssoft.Gscad.Geometry;
 using EnjiCadInspector.Helpers;
 using EnjiCadInspector.Models;
 
@@ -318,6 +319,73 @@ namespace EnjiCadInspector.Exporters
 
             info.DimensionText = SafeString(() => dimension.DimensionText);
             info.DimensionStyle = SafeString(() => dimension.DimensionStyleName);
+
+            try
+            {
+                info.TextPosition = GeometryHelper.ToPoint(dimension.TextPosition);
+            }
+            catch (Exception)
+            {
+                info.TextPosition = null;
+            }
+
+            if (dimension is AlignedDimension aligned)
+            {
+                TrySetPoint(() => aligned.XLine1Point, p => info.XLine1Point = p);
+                TrySetPoint(() => aligned.XLine2Point, p => info.XLine2Point = p);
+                TrySetPoint(() => aligned.DimLinePoint, p => info.DimLinePoint = p);
+                return;
+            }
+
+            if (dimension is RotatedDimension rotated)
+            {
+                TrySetPoint(() => rotated.XLine1Point, p => info.XLine1Point = p);
+                TrySetPoint(() => rotated.XLine2Point, p => info.XLine2Point = p);
+                TrySetPoint(() => rotated.DimLinePoint, p => info.DimLinePoint = p);
+                try
+                {
+                    info.Rotation = rotated.Rotation;
+                }
+                catch (Exception)
+                {
+                    info.Rotation = null;
+                }
+
+                return;
+            }
+
+            if (dimension is RadialDimension radial)
+            {
+                TrySetPoint(() => radial.Center, p => info.Center = p);
+                TrySetPoint(() => radial.ChordPoint, p => info.ChordPoint = p);
+                return;
+            }
+
+            if (dimension is DiametricDimension diametric)
+            {
+                TrySetPoint(() => diametric.ChordPoint, p => info.ChordPoint = p);
+                TrySetPoint(() => diametric.FarChordPoint, p => info.FarChordPoint = p);
+                return;
+            }
+
+            if (dimension is OrdinateDimension ordinate)
+            {
+                TrySetPoint(() => ordinate.DefiningPoint, p => info.XLine1Point = p);
+                TrySetPoint(() => ordinate.LeaderEndPoint, p => info.DimLinePoint = p);
+                TrySetPoint(() => ordinate.Origin, p => info.Center = p);
+            }
+        }
+
+        private static void TrySetPoint(Func<Point3d> getter, Action<Point3dInfo> setter)
+        {
+            try
+            {
+                setter(GeometryHelper.ToPoint(getter()));
+            }
+            catch (Exception)
+            {
+                // Property may be unavailable on this host / dim subtype.
+            }
         }
 
         private static void FillBlockReference(EntityInfo info, BlockReference br, Transaction tr)
@@ -451,7 +519,8 @@ namespace EnjiCadInspector.Exporters
 
             if (entity is Dimension)
             {
-                return "Dimension";
+                // Preserve concrete dim subtype (AlignedDimension, RotatedDimension, ...).
+                return entity.GetType().Name;
             }
 
             if (entity is Leader)

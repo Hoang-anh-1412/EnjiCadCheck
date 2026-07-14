@@ -78,5 +78,50 @@ namespace EnjiCadInspector.Helpers
                 Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                 "drawing.json");
         }
+
+        /// <summary>
+        /// Deserializes a drawing.json file into <see cref="ExportResult"/>.
+        /// </summary>
+        public static ExportResult Deserialize(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                throw new ArgumentException("Input path is empty.", nameof(filePath));
+            }
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException("JSON file not found.", filePath);
+            }
+
+            var json = File.ReadAllText(filePath, Encoding.UTF8);
+            var result = JsonConvert.DeserializeObject<ExportResult>(json, Settings);
+            if (result == null)
+            {
+                throw new InvalidOperationException("JSON deserialized to null.");
+            }
+
+            if (result.Layers == null)
+            {
+                result.Layers = new System.Collections.Generic.List<LayerInfo>();
+            }
+
+            if (result.Blocks == null)
+            {
+                result.Blocks = new System.Collections.Generic.List<BlockInfo>();
+            }
+
+            if (result.Entities == null)
+            {
+                result.Entities = new System.Collections.Generic.List<EntityInfo>();
+            }
+
+            if (result.Summary == null)
+            {
+                result.Summary = new SummaryInfo();
+            }
+
+            return result;
+        }
     }
 }

@@ -129,7 +129,7 @@ namespace EnjiCadInspector.Models
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public double? Width { get; set; }
 
-        // ---- Dimension ----
+        // ---- Dimension (geometry for DIM recreate) ----
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public double? Measurement { get; set; }
@@ -139,6 +139,24 @@ namespace EnjiCadInspector.Models
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string DimensionStyle { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Point3dInfo XLine1Point { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Point3dInfo XLine2Point { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Point3dInfo DimLinePoint { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Point3dInfo TextPosition { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Point3dInfo ChordPoint { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Point3dInfo FarChordPoint { get; set; }
 
         // ---- BlockReference ----
 

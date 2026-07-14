@@ -81,6 +81,27 @@ namespace EnjiCadInspector.Helpers
         }
 
         /// <summary>
+        /// Converts a serializable DTO back to a CAD Point3d.
+        /// </summary>
+        public static Point3d ToCadPoint(Point3dInfo point)
+        {
+            if (point == null)
+            {
+                return Point3d.Origin;
+            }
+
+            return new Point3d(point.X, point.Y, point.Z);
+        }
+
+        /// <summary>
+        /// Returns true when the DTO has usable coordinates.
+        /// </summary>
+        public static bool HasPoint(Point3dInfo point)
+        {
+            return point != null;
+        }
+
+        /// <summary>
         /// Converts Extents3d to BoundsInfo.
         /// </summary>
         public static BoundsInfo FromExtents(Extents3d extents)
