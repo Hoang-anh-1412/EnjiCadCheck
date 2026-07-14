@@ -106,9 +106,9 @@ namespace EnjiCadCheck
             }
         }
 
-        public static Dictionary<string, ObjectId> CollectRoles(Database db, Transaction tr)
+        public static Dictionary<string, List<ObjectId>> CollectRoles(Database db, Transaction tr)
         {
-            var map = new Dictionary<string, ObjectId>(StringComparer.OrdinalIgnoreCase);
+            var map = new Dictionary<string, List<ObjectId>>(StringComparer.OrdinalIgnoreCase);
             var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
             var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
 
@@ -131,21 +131,29 @@ namespace EnjiCadCheck
                     continue;
                 }
 
-                map[role] = id;
+                if (!map.TryGetValue(role, out var list))
+                {
+                    list = new List<ObjectId>();
+                    map[role] = list;
+                }
+
+                list.Add(id);
             }
 
             return map;
         }
 
-        public static Point3d ResolveOrigin(Dictionary<string, Line> lines)
+        public static Point3d ResolveOrigin(Dictionary<string, List<Line>> lines)
         {
-            if (lines.TryGetValue("BOT", out var bot))
+            if (lines.TryGetValue("BOT", out var bots) && bots.Count > 0)
             {
+                var bot = bots[0];
                 return Leftish(bot.StartPoint, bot.EndPoint);
             }
 
-            if (lines.TryGetValue("BL", out var bl))
+            if (lines.TryGetValue("BL", out var bls) && bls.Count > 0)
             {
+                var bl = bls[0];
                 return Lowerish(bl.StartPoint, bl.EndPoint);
             }
 
@@ -153,7 +161,7 @@ namespace EnjiCadCheck
         }
 
         public static void ApplySize(
-            Dictionary<string, Line> lines,
+            Dictionary<string, List<Line>> lines,
             Point3d origin,
             double width,
             double heightTop,
@@ -166,29 +174,32 @@ namespace EnjiCadCheck
             var yTop = yMid + heightTop;
             var z = origin.Z;
 
-            SetLine(lines, "BOT", new Point3d(x0, y0, z), new Point3d(x1, y0, z));
-            SetLine(lines, "MID", new Point3d(x0, yMid, z), new Point3d(x1, yMid, z));
-            SetLine(lines, "TOP", new Point3d(x0, yTop, z), new Point3d(x1, yTop, z));
-            SetLine(lines, "BL", new Point3d(x0, y0, z), new Point3d(x0, yMid, z));
-            SetLine(lines, "BR", new Point3d(x1, y0, z), new Point3d(x1, yMid, z));
-            SetLine(lines, "TL", new Point3d(x0, yMid, z), new Point3d(x0, yTop, z));
-            SetLine(lines, "TR", new Point3d(x1, yMid, z), new Point3d(x1, yTop, z));
+            SetLines(lines, "BOT", new Point3d(x0, y0, z), new Point3d(x1, y0, z));
+            SetLines(lines, "MID", new Point3d(x0, yMid, z), new Point3d(x1, yMid, z));
+            SetLines(lines, "TOP", new Point3d(x0, yTop, z), new Point3d(x1, yTop, z));
+            SetLines(lines, "BL", new Point3d(x0, y0, z), new Point3d(x0, yMid, z));
+            SetLines(lines, "BR", new Point3d(x1, y0, z), new Point3d(x1, yMid, z));
+            SetLines(lines, "TL", new Point3d(x0, yMid, z), new Point3d(x0, yTop, z));
+            SetLines(lines, "TR", new Point3d(x1, yMid, z), new Point3d(x1, yTop, z));
         }
 
-        private static void SetLine(
-            Dictionary<string, Line> lines,
+        private static void SetLines(
+            Dictionary<string, List<Line>> lines,
             string role,
             Point3d start,
             Point3d end)
         {
-            if (!lines.TryGetValue(role, out var line))
+            if (!lines.TryGetValue(role, out var list))
             {
                 return;
             }
 
-            line.UpgradeOpen();
-            line.StartPoint = start;
-            line.EndPoint = end;
+            foreach (var line in list)
+            {
+                line.UpgradeOpen();
+                line.StartPoint = start;
+                line.EndPoint = end;
+            }
         }
 
         private static Point3d Leftish(Point3d a, Point3d b)

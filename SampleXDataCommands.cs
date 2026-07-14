@@ -28,45 +28,76 @@ namespace EnjiCadCheck
 
             var ed = doc.Editor;
             ed.WriteMessage("\n========== XTAG ==========");
-            ed.WriteMessage("\nRoles (lines): TOP MID BOT TL TR BL BR");
-            ed.WriteMessage("\nRoles (dims):  DIM_W DIM_H1 DIM_H2");
+            ed.WriteMessage("\nFlow: type role → window/select many → Enter.");
+            ed.WriteMessage("\nThen type next role, or Enter empty to finish.");
+            ed.WriteMessage("\nSample roles: TOP MID BOT TL TR BL BR | DIM_W DIM_H1 DIM_H2");
 
-            var entOpts = new PromptEntityOptions("\nSelect entity to tag: ");
-            entOpts.SetRejectMessage("\nNot an entity.");
-            entOpts.AddAllowedClass(typeof(Entity), exactMatch: false);
-            var entRes = ed.GetEntity(entOpts);
-            if (entRes.Status != PromptStatus.OK)
-            {
-                ed.WriteMessage("\nCancelled.\n");
-                return;
-            }
-
-            var keyOpts = new PromptStringOptions("\nRole key: ")
-            {
-                AllowSpaces = false
-            };
-            var keyRes = ed.GetString(keyOpts);
-            if (keyRes.Status != PromptStatus.OK || string.IsNullOrWhiteSpace(keyRes.StringResult))
-            {
-                ed.WriteMessage("\nCancelled.\n");
-                return;
-            }
-
+            var totalTagged = 0;
             try
             {
                 using (doc.LockDocument())
-                using (var tr = doc.TransactionManager.StartTransaction())
                 {
-                    SampleXData.EnsureRegApp(doc.Database, tr);
-                    var ent = (Entity)tr.GetObject(entRes.ObjectId, OpenMode.ForWrite);
-                    var role = keyRes.StringResult.Trim().ToUpperInvariant();
-                    SampleXData.SetRole(ent, role);
-                    tr.Commit();
-                    ed.WriteMessage(
-                        "\nOK: handle={0} role={1} type={2}",
-                        ent.Handle,
-                        role,
-                        ent.GetType().Name);
+                    while (true)
+                    {
+                        var keyOpts = new PromptStringOptions("\nRole key (Enter empty = done): ")
+                        {
+                            AllowSpaces = false,
+                            UseDefaultValue = true,
+                            DefaultValue = ""
+                        };
+                        var keyRes = ed.GetString(keyOpts);
+                        if (keyRes.Status != PromptStatus.OK)
+                        {
+                            break;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(keyRes.StringResult))
+                        {
+                            break;
+                        }
+
+                        var role = keyRes.StringResult.Trim().ToUpperInvariant();
+
+                        var selOpts = new PromptSelectionOptions
+                        {
+                            MessageForAdding = string.Format(
+                                "\nSelect entities for role [{0}] (window OK): ",
+                                role),
+                            AllowDuplicates = false
+                        };
+                        var selRes = ed.GetSelection(selOpts);
+                        if (selRes.Status != PromptStatus.OK)
+                        {
+                            ed.WriteMessage("\n(no selection for {0}, skipped)", role);
+                            continue;
+                        }
+
+                        using (var tr = doc.TransactionManager.StartTransaction())
+                        {
+                            SampleXData.EnsureRegApp(doc.Database, tr);
+                            var count = 0;
+                            foreach (SelectedObject so in selRes.Value)
+                            {
+                                if (so == null || so.ObjectId.IsNull)
+                                {
+                                    continue;
+                                }
+
+                                var ent = tr.GetObject(so.ObjectId, OpenMode.ForWrite) as Entity;
+                                if (ent == null)
+                                {
+                                    continue;
+                                }
+
+                                SampleXData.SetRole(ent, role);
+                                count++;
+                            }
+
+                            tr.Commit();
+                            totalTagged += count;
+                            ed.WriteMessage("\nOK: role={0} tagged={1}", role, count);
+                        }
+                    }
                 }
             }
             catch (System.Exception ex)
@@ -74,6 +105,7 @@ namespace EnjiCadCheck
                 ed.WriteMessage("\nFAIL: {0}", ex.Message);
             }
 
+            ed.WriteMessage("\nDone. Total tagged this run: {0}", totalTagged);
             ed.WriteMessage("\n==========================\n");
         }
 
@@ -101,17 +133,25 @@ namespace EnjiCadCheck
                     }
                     else
                     {
+                        var entityCount = 0;
                         foreach (var kv in map)
                         {
-                            var ent = (Entity)tr.GetObject(kv.Value, OpenMode.ForRead);
-                            ed.WriteMessage(
-                                "\n  {0,-8} handle={1}  {2}",
-                                kv.Key,
-                                ent.Handle,
-                                ent.GetType().Name);
+                            foreach (var id in kv.Value)
+                            {
+                                var ent = (Entity)tr.GetObject(id, OpenMode.ForRead);
+                                ed.WriteMessage(
+                                    "\n  {0,-8} handle={1}  {2}",
+                                    kv.Key,
+                                    ent.Handle,
+                                    ent.GetType().Name);
+                                entityCount++;
+                            }
                         }
 
-                        ed.WriteMessage("\nCount: {0}", map.Count);
+                        ed.WriteMessage(
+                            "\nRoles: {0} | Entities: {1}",
+                            map.Count,
+                            entityCount);
                     }
 
                     tr.Commit();
@@ -152,23 +192,34 @@ namespace EnjiCadCheck
                 using (var tr = doc.TransactionManager.StartTransaction())
                 {
                     var roleIds = SampleXData.CollectRoles(doc.Database, tr);
-                    var lines = new Dictionary<string, Line>(StringComparer.OrdinalIgnoreCase);
+                    var lines = new Dictionary<string, List<Line>>(StringComparer.OrdinalIgnoreCase);
 
                     foreach (var role in SampleXData.LineRoles)
                     {
-                        if (!roleIds.TryGetValue(role, out var id))
+                        if (!roleIds.TryGetValue(role, out var ids))
                         {
                             continue;
                         }
 
-                        var line = tr.GetObject(id, OpenMode.ForRead) as Line;
-                        if (line == null)
+                        var list = new List<Line>();
+                        foreach (var id in ids)
                         {
-                            ed.WriteMessage("\nWARN: role {0} is not a Line (skipped)", role);
-                            continue;
+                            var line = tr.GetObject(id, OpenMode.ForRead) as Line;
+                            if (line == null)
+                            {
+                                ed.WriteMessage(
+                                    "\nWARN: role {0} handle not a Line (skipped)",
+                                    role);
+                                continue;
+                            }
+
+                            list.Add(line);
                         }
 
-                        lines[role] = line;
+                        if (list.Count > 0)
+                        {
+                            lines[role] = list;
+                        }
                     }
 
                     if (!lines.ContainsKey("BOT") && !lines.ContainsKey("BL"))
@@ -304,29 +355,33 @@ namespace EnjiCadCheck
 
         private static void UpdateDimText(
             Transaction tr,
-            Dictionary<string, ObjectId> roleIds,
+            Dictionary<string, List<ObjectId>> roleIds,
             string role,
             double value)
         {
-            if (!roleIds.TryGetValue(role, out var id))
+            if (!roleIds.TryGetValue(role, out var ids))
             {
                 return;
             }
 
-            var dim = tr.GetObject(id, OpenMode.ForWrite) as Dimension;
-            if (dim == null)
+            var text = value.ToString("0.####", CultureInfo.InvariantCulture);
+            foreach (var id in ids)
             {
-                return;
-            }
+                var dim = tr.GetObject(id, OpenMode.ForWrite) as Dimension;
+                if (dim == null)
+                {
+                    continue;
+                }
 
-            dim.DimensionText = value.ToString("0.####", CultureInfo.InvariantCulture);
-            try
-            {
-                dim.RecomputeDimensionBlock(true);
-            }
-            catch
-            {
-                // Some hosts accept text override without recompute.
+                dim.DimensionText = text;
+                try
+                {
+                    dim.RecomputeDimensionBlock(true);
+                }
+                catch
+                {
+                    // Some hosts accept text override without recompute.
+                }
             }
         }
 

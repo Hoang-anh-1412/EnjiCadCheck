@@ -20,6 +20,18 @@ refs/
 *.dll
 *.pdb
 *.exe
+# Keep NuGet Newtonsoft.Json for offline CADian builds
+!packages/
+!packages/**/
+!packages/**/*.dll
+!packages/**/*.xml
+!packages/**/*.md
+!packages/**/*.nuspec
+!packages/**/*.psmdcp
+!packages/**/*.rels
+!packages/**/*.p7s
+!packages/**/*.xml
+!packages/**/[Content_Types].xml
 
 # CAD / temp
 *.bak

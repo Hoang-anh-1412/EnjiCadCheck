@@ -42,6 +42,10 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="GcCoreMgd">
       <HintPath>..\..\..\..\myPRJ\CAD\PDF\Debug\GcCoreMgd.dll</HintPath>
       <Private>False</Private>
@@ -63,6 +67,23 @@
     <Compile Include="SampleXData.cs" />
     <Compile Include="SampleXDataCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <!-- EnjiCadInspector: EXPORT_DWG_JSON -->
+    <Compile Include="EnjiCadInspector\Commands\ExportDwgJsonCommand.cs" />
+    <Compile Include="EnjiCadInspector\Exporters\BlockExporter.cs" />
+    <Compile Include="EnjiCadInspector\Exporters\DrawingExporter.cs" />
+    <Compile Include="EnjiCadInspector\Exporters\EntityExporter.cs" />
+    <Compile Include="EnjiCadInspector\Exporters\LayerExporter.cs" />
+    <Compile Include="EnjiCadInspector\Exporters\SummaryExporter.cs" />
+    <Compile Include="EnjiCadInspector\Helpers\GeometryHelper.cs" />
+    <Compile Include="EnjiCadInspector\Helpers\JsonHelper.cs" />
+    <Compile Include="EnjiCadInspector\Models\BoundsInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\BlockInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\DrawingInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\EntityInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\ExportResult.cs" />
+    <Compile Include="EnjiCadInspector\Models\LayerInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\Point3dInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\SummaryInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
