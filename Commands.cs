@@ -36,7 +36,7 @@ namespace EnjiCadCheck
             ReportAsm(ed, "GcCoreMgd");
 
             ed.WriteMessage("\nStatus:   OK - enjiCAD .NET API is working");
-            ed.WriteMessage("\nTip:      CHECKENT / TANKINV / EXPORT_DWG_JSON / IMPORT_DWG_JSON / XDRAW / XTAG");
+            ed.WriteMessage("\nTip:      CHECKENT / TANKINV / TAOMOI_TANK / EXPORT_DWG_JSON / IMPORT_DWG_JSON / XDRAW / XTAG");
             ed.WriteMessage("\n================================\n");
         }
 

@@ -41,6 +41,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Newtonsoft.Json">
       <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -68,8 +69,10 @@
     <Compile Include="SampleXDataCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <!-- EnjiCadInspector: EXPORT_DWG_JSON / IMPORT_DWG_JSON -->
+    <Compile Include="EnjiCadInspector\Commands\CreateNewTankCommand.cs" />
     <Compile Include="EnjiCadInspector\Commands\ExportDwgJsonCommand.cs" />
     <Compile Include="EnjiCadInspector\Commands\ImportDwgJsonCommand.cs" />
+    <Compile Include="EnjiCadInspector\Engine\TankViewDrawer.cs" />
     <Compile Include="EnjiCadInspector\Exporters\BlockExporter.cs" />
     <Compile Include="EnjiCadInspector\Exporters\DrawingExporter.cs" />
     <Compile Include="EnjiCadInspector\Exporters\EntityExporter.cs" />
@@ -88,6 +91,8 @@
     <Compile Include="EnjiCadInspector\Models\LayerInfo.cs" />
     <Compile Include="EnjiCadInspector\Models\Point3dInfo.cs" />
     <Compile Include="EnjiCadInspector\Models\SummaryInfo.cs" />
+    <Compile Include="EnjiCadInspector\Models\TankBodyParams.cs" />
+    <Compile Include="EnjiCadInspector\UI\TankParamForm.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
