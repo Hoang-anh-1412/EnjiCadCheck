@@ -8,6 +8,7 @@ namespace EnjiCadInspector.Engine
 {
     /// <summary>
     /// Draws elevation (hình chiếu đứng) and section A-A from body parameters.
+    /// Shell = Lines; heads = circular Arc entities (not ellipse / polyline).
     /// </summary>
     public static class TankViewDrawer
     {
@@ -16,8 +17,6 @@ namespace EnjiCadInspector.Engine
         private const string LayerCenter = "TANK_CENTER";
         private const string LayerDim = "TANK_DIM";
         private const string LayerText = "TANK_TEXT";
-
-        private const int EllipseSegments = 24;
 
         /// <summary>
         /// Draws both views into ModelSpace. Origin is left body junction on elevation centerline.
@@ -56,7 +55,7 @@ namespace EnjiCadInspector.Engine
             double H,
             double originY)
         {
-            AppendClosedTankOutline(ms, tr, L, R, H, originY, LayerOutline, Color.FromColorIndex(ColorMethod.ByAci, 4));
+            AppendTankOutline(ms, tr, L, R, H, originY, LayerOutline, Color.FromColorIndex(ColorMethod.ByAci, 4));
 
             // Centerline (body + heads)
             AppendLine(ms, tr,
@@ -111,10 +110,10 @@ namespace EnjiCadInspector.Engine
             var hInner = Math.Max(H - thickness, H * (rInner / R));
 
             // Outer shell
-            AppendClosedTankOutline(ms, tr, L, R, H, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 4));
+            AppendTankOutline(ms, tr, L, R, H, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 4));
 
             // Inner shell (cut face)
-            AppendClosedTankOutline(ms, tr, L, rInner, hInner, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 3));
+            AppendTankOutline(ms, tr, L, rInner, hInner, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 3));
 
             // Centerline
             AppendLine(ms, tr,
@@ -163,7 +162,11 @@ namespace EnjiCadInspector.Engine
                 LayerText);
         }
 
-        private static void AppendClosedTankOutline(
+        /// <summary>
+        /// Body top/bottom as Lines; left/right heads as one circular Arc each.
+        /// Arc passes through body junctions and tip at head depth H.
+        /// </summary>
+        private static void AppendTankOutline(
             BlockTableRecord ms,
             Transaction tr,
             double L,
@@ -173,40 +176,67 @@ namespace EnjiCadInspector.Engine
             string layer,
             Color color)
         {
-            var pl = new Polyline();
-            pl.SetDatabaseDefaults();
-            pl.Layer = layer;
-            pl.Color = color;
-            pl.Closed = true;
+            AppendLine(ms, tr,
+                new Point3d(0, originY + R, 0),
+                new Point3d(L, originY + R, 0),
+                layer, color);
+            AppendLine(ms, tr,
+                new Point3d(0, originY - R, 0),
+                new Point3d(L, originY - R, 0),
+                layer, color);
 
-            var idx = 0;
+            AppendHeadArc(ms, tr, junctionX: 0.0, R, H, originY, isLeft: true, layer, color);
+            AppendHeadArc(ms, tr, junctionX: L, R, H, originY, isLeft: false, layer, color);
+        }
 
-            // Start at left body junction top (0, +R), go clockwise: top body → right head → bottom body → left head.
-            pl.AddVertexAt(idx++, new Point2d(0, originY + R), 0, 0, 0);
-            pl.AddVertexAt(idx++, new Point2d(L, originY + R), 0, 0, 0);
+        /// <summary>
+        /// Circular head: center on axis so arc hits (junction,±R) and tip at depth H.
+        /// </summary>
+        private static void AppendHeadArc(
+            BlockTableRecord ms,
+            Transaction tr,
+            double junctionX,
+            double R,
+            double H,
+            double originY,
+            bool isLeft,
+            string layer,
+            Color color)
+        {
+            // Distance from junction toward body axis point of arc center.
+            var centerOffset = (R * R - H * H) / (2.0 * H);
+            var radius = Math.Sqrt(centerOffset * centerOffset + R * R);
 
-            // Right elliptical head (parametric θ = π/2 → -π/2 through tip)
-            for (var i = 1; i <= EllipseSegments; i++)
+            Point3d center;
+            double startAng;
+            double endAng;
+
+            if (isLeft)
             {
-                var theta = Math.PI / 2.0 - Math.PI * i / EllipseSegments;
-                var x = L + H * Math.Cos(theta);
-                var y = originY + R * Math.Sin(theta);
-                pl.AddVertexAt(idx++, new Point2d(x, y), 0, 0, 0);
+                // Tip at -H; center sits inside the body (positive X from left junction).
+                center = new Point3d(junctionX + centerOffset, originY, 0);
+                // CCW from top junction through left tip (π) to bottom.
+                startAng = Math.Atan2(R, junctionX - center.X);
+                endAng = Math.Atan2(-R, junctionX - center.X);
+                if (endAng <= startAng)
+                {
+                    endAng += 2.0 * Math.PI;
+                }
+            }
+            else
+            {
+                // Tip at L+H; center sits inside the body (negative X from right junction).
+                center = new Point3d(junctionX - centerOffset, originY, 0);
+                // CCW from bottom junction through right tip (0) to top.
+                startAng = Math.Atan2(-R, junctionX - center.X);
+                endAng = Math.Atan2(R, junctionX - center.X);
+                if (endAng <= startAng)
+                {
+                    endAng += 2.0 * Math.PI;
+                }
             }
 
-            pl.AddVertexAt(idx++, new Point2d(0, originY - R), 0, 0, 0);
-
-            // Left elliptical head (θ = -π/2 → π/2 through tip at x = -H)
-            for (var i = 1; i <= EllipseSegments; i++)
-            {
-                var theta = -Math.PI / 2.0 + Math.PI * i / EllipseSegments;
-                var x = -H * Math.Cos(theta);
-                var y = originY + R * Math.Sin(theta);
-                pl.AddVertexAt(idx++, new Point2d(x, y), 0, 0, 0);
-            }
-
-            ms.AppendEntity(pl);
-            tr.AddNewlyCreatedDBObject(pl, true);
+            AppendArc(ms, tr, center, radius, startAng, endAng, layer, color);
         }
 
         private static void AppendLine(
@@ -223,6 +253,24 @@ namespace EnjiCadInspector.Engine
             line.Color = color;
             ms.AppendEntity(line);
             tr.AddNewlyCreatedDBObject(line, true);
+        }
+
+        private static void AppendArc(
+            BlockTableRecord ms,
+            Transaction tr,
+            Point3d center,
+            double radius,
+            double startAng,
+            double endAng,
+            string layer,
+            Color color)
+        {
+            var arc = new Arc(center, radius, startAng, endAng);
+            arc.SetDatabaseDefaults();
+            arc.Layer = layer;
+            arc.Color = color;
+            ms.AppendEntity(arc);
+            tr.AddNewlyCreatedDBObject(arc, true);
         }
 
         private static void AppendAlignedDim(
