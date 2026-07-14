@@ -38,13 +38,15 @@ namespace EnjiCadInspector.Engine
             var R = p.Radius;
             var H = p.HeadDepth;
             var t = p.ShellThickness;
+            var rk = p.KnuckleRadius;
+            var rc = p.CrownRadius;
 
             // Elevation: centerline at Y = 0, body from X = 0 .. L, heads outside.
-            DrawElevation(ms, tr, L, R, H, originY: 0.0);
+            DrawElevation(ms, tr, L, R, H, rk, rc, originY: 0.0);
 
             // Section A-A placed below elevation.
             var sectionOriginY = -(2.0 * R + Math.Max(400.0, R * 0.8));
-            DrawSectionAa(ms, tr, L, R, H, t, originY: sectionOriginY);
+            DrawSectionAa(ms, tr, L, R, H, t, rk, rc, originY: sectionOriginY);
         }
 
         private static void DrawElevation(
@@ -53,9 +55,11 @@ namespace EnjiCadInspector.Engine
             double L,
             double R,
             double H,
+            double rk,
+            double rc,
             double originY)
         {
-            AppendTankOutline(ms, tr, L, R, H, originY, LayerOutline, Color.FromColorIndex(ColorMethod.ByAci, 4));
+            AppendTankOutline(ms, tr, L, R, rk, rc, originY, LayerOutline, Color.FromColorIndex(ColorMethod.ByAci, 4));
 
             // Centerline (body + heads)
             AppendLine(ms, tr,
@@ -104,16 +108,17 @@ namespace EnjiCadInspector.Engine
             double R,
             double H,
             double thickness,
+            double rk,
+            double rc,
             double originY)
         {
             var rInner = R - thickness;
-            var hInner = Math.Max(H - thickness, H * (rInner / R));
 
             // Outer shell
-            AppendTankOutline(ms, tr, L, R, H, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 4));
+            AppendTankOutline(ms, tr, L, R, rk, rc, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 4));
 
-            // Inner shell (cut face)
-            AppendTankOutline(ms, tr, L, rInner, hInner, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 3));
+            // Inner shell (cut face) — same knuckle/crown radii, reduced body radius
+            AppendTankOutline(ms, tr, L, rInner, rk, rc, originY, LayerSection, Color.FromColorIndex(ColorMethod.ByAci, 3));
 
             // Centerline
             AppendLine(ms, tr,
@@ -163,15 +168,15 @@ namespace EnjiCadInspector.Engine
         }
 
         /// <summary>
-        /// Body top/bottom as Lines; left/right heads as one circular Arc each.
-        /// Arc passes through body junctions and tip at head depth H.
+        /// Body top/bottom Lines; each head = knuckle Arc (Rk) + crown Arc (Rc) + knuckle Arc (Rk).
         /// </summary>
         private static void AppendTankOutline(
             BlockTableRecord ms,
             Transaction tr,
             double L,
             double R,
-            double H,
+            double rk,
+            double rc,
             double originY,
             string layer,
             Color color)
@@ -185,58 +190,109 @@ namespace EnjiCadInspector.Engine
                 new Point3d(L, originY - R, 0),
                 layer, color);
 
-            AppendHeadArc(ms, tr, junctionX: 0.0, R, H, originY, isLeft: true, layer, color);
-            AppendHeadArc(ms, tr, junctionX: L, R, H, originY, isLeft: false, layer, color);
+            AppendTorisphericalHead(ms, tr, junctionX: 0.0, R, rk, rc, originY, isLeft: true, layer, color);
+            AppendTorisphericalHead(ms, tr, junctionX: L, R, rk, rc, originY, isLeft: false, layer, color);
         }
 
         /// <summary>
-        /// Circular head: center on axis so arc hits (junction,±R) and tip at depth H.
+        /// Torispherical head: top knuckle Rk + crown Rc + bottom knuckle Rk.
         /// </summary>
-        private static void AppendHeadArc(
+        private static void AppendTorisphericalHead(
             BlockTableRecord ms,
             Transaction tr,
             double junctionX,
             double R,
-            double H,
+            double rk,
+            double rc,
             double originY,
             bool isLeft,
             string layer,
             Color color)
         {
-            // Distance from junction toward body axis point of arc center.
-            var centerOffset = (R * R - H * H) / (2.0 * H);
-            var radius = Math.Sqrt(centerOffset * centerOffset + R * R);
+            var a = rc - rk;
+            var b = R - rk;
+            var xcLocal = Math.Sqrt(a * a - b * b);
+            var sign = isLeft ? 1.0 : -1.0;
 
-            Point3d center;
-            double startAng;
-            double endAng;
+            var ckTop = new Point3d(junctionX, originY + b, 0);
+            var ckBot = new Point3d(junctionX, originY - b, 0);
+            var cc = new Point3d(junctionX + sign * xcLocal, originY, 0);
+
+            // Outer contact join points: along centers, away from crown interior
+            var joinTop = PointOnRay(ckTop, ckTop.X - cc.X, ckTop.Y - cc.Y, rk / a);
+            var joinBot = PointOnRay(ckBot, ckBot.X - cc.X, ckBot.Y - cc.Y, rk / a);
+
+            // --- Top knuckle ---
+            var angJuncTop = Math.PI / 2.0;
+            var angJoinTop = Math.Atan2(joinTop.Y - ckTop.Y, joinTop.X - ckTop.X);
 
             if (isLeft)
             {
-                // Tip at -H; center sits inside the body (positive X from left junction).
-                center = new Point3d(junctionX + centerOffset, originY, 0);
-                // CCW from top junction through left tip (π) to bottom.
-                startAng = Math.Atan2(R, junctionX - center.X);
-                endAng = Math.Atan2(-R, junctionX - center.X);
-                if (endAng <= startAng)
-                {
-                    endAng += 2.0 * Math.PI;
-                }
+                AppendArc(ms, tr, ckTop, rk, angJuncTop, NormalizeEnd(angJuncTop, angJoinTop), layer, color);
             }
             else
             {
-                // Tip at L+H; center sits inside the body (negative X from right junction).
-                center = new Point3d(junctionX - centerOffset, originY, 0);
-                // CCW from bottom junction through right tip (0) to top.
-                startAng = Math.Atan2(-R, junctionX - center.X);
-                endAng = Math.Atan2(R, junctionX - center.X);
-                if (endAng <= startAng)
-                {
-                    endAng += 2.0 * Math.PI;
-                }
+                AppendArc(ms, tr, ckTop, rk, NormalizeStart(angJoinTop), angJuncTop, layer, color);
             }
 
-            AppendArc(ms, tr, center, radius, startAng, endAng, layer, color);
+            // --- Crown ---
+            var angCrownTop = Math.Atan2(joinTop.Y - cc.Y, joinTop.X - cc.X);
+            var angCrownBot = Math.Atan2(joinBot.Y - cc.Y, joinBot.X - cc.X);
+            if (isLeft)
+            {
+                AppendArc(ms, tr, cc, rc, NormalizeStart(angCrownTop), NormalizeEnd(angCrownTop, angCrownBot), layer, color);
+            }
+            else
+            {
+                AppendArc(ms, tr, cc, rc, NormalizeStart(angCrownBot), NormalizeEnd(angCrownBot, angCrownTop), layer, color);
+            }
+
+            // --- Bottom knuckle ---
+            var angJuncBot = -Math.PI / 2.0;
+            var angJoinBot = Math.Atan2(joinBot.Y - ckBot.Y, joinBot.X - ckBot.X);
+            if (isLeft)
+            {
+                AppendArc(ms, tr, ckBot, rk, NormalizeStart(angJoinBot), NormalizeEnd(angJoinBot, angJuncBot), layer, color);
+            }
+            else
+            {
+                AppendArc(ms, tr, ckBot, rk, angJuncBot, NormalizeEnd(angJuncBot, angJoinBot), layer, color);
+            }
+        }
+
+        private static Point3d PointOnRay(Point3d origin, double dx, double dy, double scale)
+        {
+            return new Point3d(origin.X + dx * scale, origin.Y + dy * scale, 0);
+        }
+
+        private static double NormalizeStart(double ang)
+        {
+            while (ang < 0.0)
+            {
+                ang += 2.0 * Math.PI;
+            }
+
+            while (ang >= 2.0 * Math.PI)
+            {
+                ang -= 2.0 * Math.PI;
+            }
+
+            return ang;
+        }
+
+        /// <summary>
+        /// Ensures end is strictly greater than start so Arc sweeps CCW the short intended way.
+        /// </summary>
+        private static double NormalizeEnd(double start, double end)
+        {
+            start = NormalizeStart(start);
+            end = NormalizeStart(end);
+            if (end <= start)
+            {
+                end += 2.0 * Math.PI;
+            }
+
+            return end;
         }
 
         private static void AppendLine(
