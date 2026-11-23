@@ -1,0 +1,44 @@
+---
+description: Comment code bằng tiếng Việt, rõ ràng và dễ hiểu
+alwaysApply: true
+---
+
+# Comment tiếng Việt (EnjiCadCheck)
+
+Quy tắc này **ghi đè** preference comment tiếng Anh ở dự án khác. Trong repo này, mọi comment trong code phải viết bằng **tiếng Việt**.
+
+## Bắt buộc
+
+- Viết comment bằng tiếng Việt (có dấu), rõ ràng, dễ hiểu
+- Giải thích **mục đích / vì sao**, không chỉ lặp lại tên biến hoặc lệnh
+- Comment đủ để người đọc hiểu luồng xử lý CAD, tham số kỹ thuật, và giả định quan trọng
+- Giữ tên API, class, method, property AutoCAD/C# bằng tiếng Anh gốc khi nhắc trong comment
+
+## Không làm
+
+- Không viết comment tiếng Anh (trừ tên kỹ thuật / API bắt buộc giữ nguyên)
+- Không comment mơ hồ kiểu "xử lý", "tạm", "fix" mà không nói rõ làm gì
+- Không để TODO trống hoặc placeholder không giải thích
+
+## Ví dụ
+
+```csharp
+// ❌ BAD
+// Calculate offset
+// fix
+var d = p.Offset;
+
+// ✅ GOOD
+// Offset theo chiều dày vách: đẩy mép trong về phía tâm bồn để khớp mặt trong thân bồn
+var d = p.Offset;
+```
+
+```csharp
+// ❌ BAD
+// Insert block
+InsertPart(doc, p);
+
+// ✅ GOOD
+// Chèn block PART_CHOM vào bản vẽ hiện tại theo tham số form (vị trí, góc, tỷ lệ)
+InsertPart(doc, p);
+```

@@ -2,12 +2,10 @@ namespace EnjiCadInspector.Models
 {
     /// <summary>
     /// MVP body parameters for TAOMOI_TANK (Thân bồn).
-    /// Head = torispherical: knuckle R150 + crown R1500 (FAF08S06).
+    /// Head: crown = tank diameter (2R), knuckle = crown / 10.
     /// </summary>
     public sealed class TankBodyParams
     {
-        public const double DefaultKnuckleRadius = 150.0;
-        public const double DefaultCrownRadius = 1500.0;
         public const double DefaultShellThickness = 6.0;
 
         /// <summary>
@@ -16,22 +14,22 @@ namespace EnjiCadInspector.Models
         public double ShellLength { get; set; }
 
         /// <summary>
-        /// Body radius (mm) used for elevation / section silhouette.
+        /// Body radius (mm) — inner shell (内径/2). Outer = offset by ShellThickness.
         /// </summary>
         public double Radius { get; set; }
 
         /// <summary>
-        /// Head depth along axis (mm). Derived from knuckle + crown when not set.
+        /// Head depth along axis (mm). Derived from knuckle + crown.
         /// </summary>
         public double HeadDepth { get; set; }
 
         /// <summary>
-        /// Knuckle (corner) arc radius (mm).
+        /// Knuckle (corner) arc radius (mm). Derived: CrownRadius / 10.
         /// </summary>
         public double KnuckleRadius { get; set; }
 
         /// <summary>
-        /// Crown (dome) arc radius (mm).
+        /// Crown (dome) arc radius (mm). Derived: tank diameter = 2 * Radius.
         /// </summary>
         public double CrownRadius { get; set; }
 
@@ -44,14 +42,29 @@ namespace EnjiCadInspector.Models
         {
             var p = new TankBodyParams
             {
-                ShellLength = 3600.0,
+                ShellLength = 4440.0,
                 Radius = 750.0,
-                KnuckleRadius = DefaultKnuckleRadius,
-                CrownRadius = DefaultCrownRadius,
                 ShellThickness = DefaultShellThickness
             };
             p.NormalizeDerived();
             return p;
+        }
+
+        /// <summary>
+        /// Sao chép sâu: form/lệnh khác sửa được mà không đụng cache theo Document.
+        /// </summary>
+        public TankBodyParams Clone()
+        {
+            var copy = new TankBodyParams
+            {
+                ShellLength = ShellLength,
+                Radius = Radius,
+                HeadDepth = HeadDepth,
+                KnuckleRadius = KnuckleRadius,
+                CrownRadius = CrownRadius,
+                ShellThickness = ShellThickness
+            };
+            return copy;
         }
 
         /// <summary>
@@ -70,27 +83,19 @@ namespace EnjiCadInspector.Models
         }
 
         /// <summary>
-        /// Applies derived knuckle/crown/depth/thickness when optional fields are unset.
+        /// Crown = 2R (theo bán kính bồn / 内径), knuckle = crown / 10; then head depth.
         /// </summary>
         public void NormalizeDerived()
         {
-            if (KnuckleRadius <= 0.0)
-            {
-                KnuckleRadius = DefaultKnuckleRadius;
-            }
-
-            if (CrownRadius <= 0.0)
-            {
-                CrownRadius = DefaultCrownRadius;
-            }
-
             if (ShellThickness <= 0.0)
             {
                 ShellThickness = DefaultShellThickness;
             }
 
-            if (Radius > KnuckleRadius && CrownRadius > Radius)
+            if (Radius > 0.0)
             {
+                CrownRadius = Radius * 2.0;
+                KnuckleRadius = CrownRadius / 10.0;
                 HeadDepth = ComputeHeadDepth(Radius, KnuckleRadius, CrownRadius);
             }
         }
@@ -131,6 +136,13 @@ namespace EnjiCadInspector.Models
             if (ShellThickness <= 0.0 || ShellThickness >= Radius)
             {
                 return "Chiều dày thân phải lớn hơn 0 và nhỏ hơn bán kính.";
+            }
+
+            if (ShellThickness >= KnuckleRadius)
+            {
+                return string.Format(
+                    "Chiều dày thân phải nhỏ hơn knuckle R={0:0}.",
+                    KnuckleRadius);
             }
 
             return null;

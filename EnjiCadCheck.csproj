@@ -43,10 +43,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="GcCoreMgd">
       <HintPath>..\..\..\..\myPRJ\CAD\PDF\Debug\GcCoreMgd.dll</HintPath>
       <Private>False</Private>
@@ -61,38 +57,32 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class2.cs" />
-    <Compile Include="Commands.cs" />
-    <Compile Include="DrawingInventory.cs" />
-    <Compile Include="EntityApiProbe.cs" />
-    <Compile Include="SampleXData.cs" />
-    <Compile Include="SampleXDataCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <!-- EnjiCadInspector: EXPORT_DWG_JSON / IMPORT_DWG_JSON -->
     <Compile Include="EnjiCadInspector\Commands\CreateNewTankCommand.cs" />
-    <Compile Include="EnjiCadInspector\Commands\ExportDwgJsonCommand.cs" />
-    <Compile Include="EnjiCadInspector\Commands\ImportDwgJsonCommand.cs" />
+    <Compile Include="EnjiCadInspector\Commands\CreateTankShellCommand.cs" />
+    <Compile Include="EnjiCadInspector\Commands\PartChomCommand.cs" />
+    <Compile Include="EnjiCadInspector\Engine\Hole1Drawer.cs" />
+    <Compile Include="EnjiCadInspector\Engine\LiftingEyeDrawer.cs" />
+    <Compile Include="EnjiCadInspector\Engine\PartChomInserter.cs" />
     <Compile Include="EnjiCadInspector\Engine\TankViewDrawer.cs" />
-    <Compile Include="EnjiCadInspector\Exporters\BlockExporter.cs" />
-    <Compile Include="EnjiCadInspector\Exporters\DrawingExporter.cs" />
-    <Compile Include="EnjiCadInspector\Exporters\EntityExporter.cs" />
-    <Compile Include="EnjiCadInspector\Exporters\LayerExporter.cs" />
-    <Compile Include="EnjiCadInspector\Exporters\SummaryExporter.cs" />
-    <Compile Include="EnjiCadInspector\Helpers\GeometryHelper.cs" />
-    <Compile Include="EnjiCadInspector\Helpers\JsonHelper.cs" />
-    <Compile Include="EnjiCadInspector\Importers\EntityImporter.cs" />
-    <Compile Include="EnjiCadInspector\Importers\LayerImporter.cs" />
-    <Compile Include="EnjiCadInspector\Models\BoundsInfo.cs" />
-    <Compile Include="EnjiCadInspector\Models\BlockInfo.cs" />
-    <Compile Include="EnjiCadInspector\Models\DrawingInfo.cs" />
-    <Compile Include="EnjiCadInspector\Models\EntityInfo.cs" />
-    <Compile Include="EnjiCadInspector\Models\ExportResult.cs" />
-    <Compile Include="EnjiCadInspector\Models\ImportStats.cs" />
-    <Compile Include="EnjiCadInspector\Models\LayerInfo.cs" />
-    <Compile Include="EnjiCadInspector\Models\Point3dInfo.cs" />
-    <Compile Include="EnjiCadInspector\Models\SummaryInfo.cs" />
+    <Compile Include="EnjiCadInspector\Helpers\DrawingStyle.cs" />
+    <Compile Include="EnjiCadInspector\Helpers\TankBodyParamsCache.cs" />
+    <Compile Include="EnjiCadInspector\Helpers\TankShellGeometryCache.cs" />
+
+    <Compile Include="EnjiCadInspector\Models\Hole1Params.cs" />
+    <Compile Include="EnjiCadInspector\Models\LiftingEyeParams.cs" />
+    <Compile Include="EnjiCadInspector\Models\PartChomParams.cs" />
     <Compile Include="EnjiCadInspector\Models\TankBodyParams.cs" />
-    <Compile Include="EnjiCadInspector\UI\TankParamForm.cs" />
+    <Compile Include="EnjiCadInspector\Models\TankShellLayout.cs" />
+    <Compile Include="EnjiCadInspector\UI\PartChomParamForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EnjiCadInspector\UI\TankParamForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EnjiCadInspector\UI\TankShellParamForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

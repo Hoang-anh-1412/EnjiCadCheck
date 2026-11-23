@@ -5,6 +5,7 @@ using Gssoft.Gscad.DatabaseServices;
 using Gssoft.Gscad.EditorInput;
 using Gssoft.Gscad.Runtime;
 using EnjiCadInspector.Engine;
+using EnjiCadInspector.Helpers;
 using EnjiCadInspector.Models;
 using EnjiCadInspector.UI;
 using Application = Gssoft.Gscad.ApplicationServices.Application;
@@ -14,7 +15,7 @@ using Application = Gssoft.Gscad.ApplicationServices.Application;
 namespace EnjiCadInspector.Commands
 {
     /// <summary>
-    /// Parametric tank generator: form → elevation + section A-A.
+    /// Lệnh TAOMOI_TANK: form nhập tham số → hình chiếu đứng + mặt cắt A-A.
     /// </summary>
     public class CreateNewTankCommand
     {
@@ -32,8 +33,9 @@ namespace EnjiCadInspector.Commands
 
             try
             {
+                // Prefill từ cache document nếu TAOTHANTANK (hoặc lần chạy trước) đã lưu.
                 TankBodyParams parameters;
-                using (var form = new TankParamForm(TankBodyParams.CreateDefaults()))
+                using (var form = new TankParamForm(TankBodyParamsCache.GetOrDefaults(doc)))
                 {
                     var result = Application.ShowModalDialog(form);
                     if (result != DialogResult.OK || form.Result == null)
@@ -52,6 +54,9 @@ namespace EnjiCadInspector.Commands
                     TankViewDrawer.Draw(doc.Database, tr, parameters);
                     tr.Commit();
                 }
+
+                // Chia sẻ params thân đã OK cho các lệnh khác trên document này.
+                TankBodyParamsCache.Set(doc, parameters);
 
                 try
                 {
